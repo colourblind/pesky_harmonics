@@ -1,13 +1,41 @@
 #include <stdio.h>
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
-#include "spectro.h"
 
-int render(char *in_filename, char *out_filename, int samples);
+int render_time(char *in_filename, char *out_filename, int samples);
+int render_freq(char *in_filename, char *out_filename, int samples);
 
 int samples = 0;
 int frames = 0;
 FILE *outfile;
+
+int decode_packet(AVCodecContext *codecContext, AVPacket *packet, AVFrame *frame)
+{
+    int got_frame;
+    int consumed = 0;
+    int data_size;
+
+    while (packet->size > 0)
+    {
+        avcodec_get_frame_defaults(frame);
+        consumed = avcodec_decode_audio4(codecContext, frame, &got_frame, packet);
+        if (consumed <= 0)
+            return -1;
+
+        data_size = av_samples_get_buffer_size(NULL, codecContext->channels,  frame->nb_samples, codecContext->sample_fmt, 1);
+        fwrite(frame->data[0], 1, data_size, outfile);
+
+        if (got_frame)
+        {
+            frames ++;
+            samples += frame->nb_samples;
+            packet->size -= consumed;
+            packet->data += consumed;
+        }
+    }
+
+    return 0;
+}
 
 int dump_pcm(char *filename)
 {
@@ -63,34 +91,6 @@ int dump_pcm(char *filename)
 
     avcodec_close(codecContext);
     avformat_close_input(&formatContext);
-
-    return 0;
-}
-
-int decode_packet(AVCodecContext *codecContext, AVPacket *packet, AVFrame *frame)
-{
-    int got_frame;
-    int consumed = 0;
-    int data_size;
-
-    while (packet->size > 0)
-    {
-        avcodec_get_frame_defaults(frame);
-        consumed = avcodec_decode_audio4(codecContext, frame, &got_frame, packet);
-        if (consumed <= 0)
-            return -1;
-
-        data_size = av_samples_get_buffer_size(NULL, codecContext->channels,  frame->nb_samples, codecContext->sample_fmt, 1);
-        fwrite(frame->data[0], 1, data_size, outfile);
-
-        if (got_frame)
-        {
-            frames ++;
-            samples += frame->nb_samples;
-            packet->size -= consumed;
-            packet->data += consumed;
-        }
-    }
 
     return 0;
 }

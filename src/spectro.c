@@ -112,7 +112,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
 {
     int i = 0, j;
     int wtf;
-    float r1, r2;
+    float r1;
     float minv = 0, maxv = 0;
     int bytes_read;
     size_t block_size = sizeof(char) * 2 * 2 * SAMPLES_PER_BLOCK_FREQ;
