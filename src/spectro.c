@@ -3,8 +3,7 @@
 #include "kissFFT/kiss_fftr.h"
 #include "png.h"
 
-const int SAMPLES_PER_BLOCK_TIME = 1;
-const int SAMPLES_PER_BLOCK_FREQ = 1024;
+const int SAMPLES_PER_BLOCK_FREQ = 2048;
 const float POWER_SCALE = 5.f;
 
 int save_png(char *filename, unsigned char *data, int width, int height)
@@ -53,57 +52,6 @@ int save_png(char *filename, unsigned char *data, int width, int height)
     png_write_end(png_ptr, NULL);
 
     fclose(file);
-
-    return 0;
-}
-
-/*
- * Only works for 16bit 2 channel PCM data!
- */
-int render_time(char *in_filename, char *out_filename, int samples)
-{
-    int skip = 70000;
-    int take = 20000;
-    int i = 0, j;
-    int wtf;
-    unsigned int bar;
-    float minv = 0, maxv = 0;
-    int bytes_read;
-    size_t block_size = sizeof(char) * 2 * 2 * SAMPLES_PER_BLOCK_TIME;
-    char *buffer = malloc(block_size);
-    int width = min(samples / SAMPLES_PER_BLOCK_TIME, take);
-    int height = max(SAMPLES_PER_BLOCK_TIME / 2 + 1, 256);
-    unsigned char *data = malloc(sizeof(unsigned char) * width * height);
-    FILE *infile = fopen(in_filename, "rb");
-
-    memset(data, 0, sizeof(unsigned char) * width * height);
-
-    bytes_read = fread(buffer, sizeof(char), block_size, infile);
-    while(bytes_read == block_size && i < (skip + take))
-    {
-        for (j = 0; j < SAMPLES_PER_BLOCK_TIME; j ++)
-        {
-            if (i > skip && j == 0)
-            {
-                wtf = buffer[j * 2 * 2] + buffer[j * 2 * 2 + 1] * 256;
-                bar = (unsigned char)((wtf / 256) + 128);
-                data[bar * width + (i - skip)] = 255;
-            }
-        }
-
-        bytes_read = fread(buffer, sizeof(char), block_size, infile);
-        i ++;
-    }
-
-    fclose(infile);
-
-    save_png(out_filename, data, width, height);
-    free(data);
-    free(buffer);
-
-    //free(fft);
-    //free(in);
-    //free(out);
 
     return 0;
 }

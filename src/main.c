@@ -2,7 +2,6 @@
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 
-int render_time(char *in_filename, char *out_filename, int samples);
 int render_freq(char *in_filename, char *out_filename, int samples);
 
 int samples = 0;
