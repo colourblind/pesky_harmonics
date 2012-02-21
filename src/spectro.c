@@ -4,6 +4,7 @@
 #include "png.h"
 
 const int SAMPLES_PER_BLOCK_FREQ = 2048;
+const int SAMPLES_STEP = 512;
 const float POWER_SCALE = 5.f;
 
 int save_png(char *filename, unsigned char *data, int width, int height)
@@ -65,7 +66,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     int bytes_read;
     size_t block_size = sizeof(char) * 2 * 2 * SAMPLES_PER_BLOCK_FREQ;
     char *buffer = malloc(block_size);
-    int width = samples / SAMPLES_PER_BLOCK_FREQ;
+    int width = samples / SAMPLES_STEP;
     int height = SAMPLES_PER_BLOCK_FREQ / 2 + 1;
     unsigned char *data = malloc(sizeof(unsigned char) * width * height);
     FILE *infile = fopen(in_filename, "rb");
@@ -83,7 +84,6 @@ int render_freq(char *in_filename, char *out_filename, int samples)
             // Convert 16bit int to signed float
             wtf = buffer[j * 2 * 2] + buffer[j * 2 * 2 + 1] * 256;
             in[j] = (float)wtf / (65536 * 0.5f);
-            // assert(in[j] >= -1 && in[j] <= 1);
         }
         kiss_fftr(fft, in, out);
         for (j = 0; j < height; j ++)
@@ -94,6 +94,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
             data[(height - j - 1) * width + i] = (unsigned char)(min(255, r1 * POWER_SCALE));
         }
 
+        fseek(infile, sizeof(char) * -2 * 2 * (SAMPLES_PER_BLOCK_FREQ - SAMPLES_STEP), SEEK_CUR);
         bytes_read = fread(buffer, sizeof(char), block_size, infile);
         i ++;
     }
