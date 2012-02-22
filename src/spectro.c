@@ -5,7 +5,8 @@
 
 const int SAMPLES_PER_BLOCK_FREQ = 2048;
 const int SAMPLES_STEP = 512;
-const float POWER_SCALE = 5.f;
+const float POWER_SCALE = 1.f;
+const float PI = 3.14159265f;
 
 int save_png(char *filename, unsigned char *data, int width, int height)
 {
@@ -84,6 +85,8 @@ int render_freq(char *in_filename, char *out_filename, int samples)
             // Convert 16bit int to signed float
             wtf = buffer[j * 2 * 2] + buffer[j * 2 * 2 + 1] * 256;
             in[j] = (float)wtf / (65536 * 0.5f);
+            // Use a Hann window to reduce noise
+            in[j] *= (1 - cosf(2 * PI * j / SAMPLES_PER_BLOCK_FREQ)) * 0.5f;
         }
         kiss_fftr(fft, in, out);
         for (j = 0; j < height; j ++)

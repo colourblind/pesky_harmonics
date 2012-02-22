@@ -18,7 +18,8 @@ libpng
 TODO
 ----
 
-- Dynamic block size
+- Automatically scale brightness
 - Add time ticks at regular intervals
 - Logarithmically scaled frequency bins
+- More command line options
 - Technicolour!
