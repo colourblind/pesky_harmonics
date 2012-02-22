@@ -5,7 +5,6 @@
 
 const int SAMPLES_PER_BLOCK_FREQ = 2048;
 const int SAMPLES_STEP = 512;
-const float POWER_SCALE = 1.f;
 const float PI = 3.14159265f;
 
 int save_png(char *filename, unsigned char *data, int width, int height)
@@ -63,7 +62,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     int i = 0, j;
     int wtf;
     float r1;
-    float minv = 0, maxv = 0;
+    float maxv = 0;
     int bytes_read;
     size_t block_size = sizeof(char) * 2 * 2 * SAMPLES_PER_BLOCK_FREQ;
     char *buffer = malloc(block_size);
@@ -74,6 +73,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     float *in = malloc(sizeof(float) * SAMPLES_PER_BLOCK_FREQ);
     kiss_fft_cpx *out = malloc(sizeof(kiss_fft_cpx) * (SAMPLES_PER_BLOCK_FREQ / 2 + 1));
     kiss_fftr_cfg fft = kiss_fftr_alloc(SAMPLES_PER_BLOCK_FREQ, 0, 0, 0);
+    float brightness_scale;
 
     memset(data, 0, sizeof(unsigned char) * width * height);
 
@@ -92,9 +92,8 @@ int render_freq(char *in_filename, char *out_filename, int samples)
         for (j = 0; j < height; j ++)
         {
             r1 = sqrtf(out[j].i * out[j].i + out[j].r * out[j].r);
-            minv = min(minv, r1);
             maxv = max(maxv, r1);
-            data[(height - j - 1) * width + i] = (unsigned char)(min(255, r1 * POWER_SCALE));
+            data[(height - j - 1) * width + i] = (unsigned char)(min(255, r1));
         }
 
         fseek(infile, sizeof(char) * -2 * 2 * (SAMPLES_PER_BLOCK_FREQ - SAMPLES_STEP), SEEK_CUR);
@@ -102,7 +101,10 @@ int render_freq(char *in_filename, char *out_filename, int samples)
         i ++;
     }
 
-    printf("\n%f2, %f2\n", minv, maxv);
+    brightness_scale = 750.f / maxv;
+    printf("\nmaxv : %.3f\nscale: %.3f\n", maxv, brightness_scale);
+    for (i = 0; i < width * height; i ++)
+        data[i] = (unsigned char)min(255, data[i] * brightness_scale);
 
     fclose(infile);
 
