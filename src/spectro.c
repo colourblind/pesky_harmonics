@@ -61,13 +61,15 @@ int render_freq(char *in_filename, char *out_filename, int samples)
 {
     int i = 0, j;
     int wtf;
-    float r1;
-    float maxv = 0;
+    float cumulative_average = 0;
+    float block_average = 0;
+    float result;
     int bytes_read;
     size_t block_size = sizeof(char) * 2 * 2 * SAMPLES_PER_BLOCK_FREQ;
     char *buffer = malloc(block_size);
     int width = samples / SAMPLES_STEP;
     int height = SAMPLES_PER_BLOCK_FREQ / 2 + 1;
+    float *float_data = malloc(sizeof(float) * width * height);
     unsigned char *data = malloc(sizeof(unsigned char) * width * height);
     FILE *infile = fopen(in_filename, "rb");
     float *in = malloc(sizeof(float) * SAMPLES_PER_BLOCK_FREQ);
@@ -89,26 +91,32 @@ int render_freq(char *in_filename, char *out_filename, int samples)
             in[j] *= (1 - cosf(2 * PI * j / SAMPLES_PER_BLOCK_FREQ)) * 0.5f;
         }
         kiss_fftr(fft, in, out);
+
+        block_average = 0;
         for (j = 0; j < height; j ++)
         {
-            r1 = sqrtf(out[j].i * out[j].i + out[j].r * out[j].r);
-            maxv = max(maxv, r1);
-            data[(height - j - 1) * width + i] = (unsigned char)(min(255, r1));
+            result = sqrtf(out[j].i * out[j].i + out[j].r * out[j].r);
+            block_average += result;
+            float_data[(height - j - 1) * width + i] = result;
         }
+
+        block_average /= height;
+        cumulative_average = (block_average + i * cumulative_average) / (i + 1);
 
         fseek(infile, sizeof(char) * -2 * 2 * (SAMPLES_PER_BLOCK_FREQ - SAMPLES_STEP), SEEK_CUR);
         bytes_read = fread(buffer, sizeof(char), block_size, infile);
         i ++;
     }
 
-    brightness_scale = 750.f / maxv;
-    printf("\nmaxv : %.3f\nscale: %.3f\n", maxv, brightness_scale);
+    brightness_scale = 20.f / cumulative_average;
+    printf("\naver : %.3f\nscale: %.3f\n", cumulative_average, brightness_scale);
     for (i = 0; i < width * height; i ++)
-        data[i] = (unsigned char)min(255, data[i] * brightness_scale);
+        data[i] = (unsigned char)min(255, float_data[i] * brightness_scale);
 
     fclose(infile);
 
     save_png(out_filename, data, width, height);
+    free(float_data);
     free(data);
     free(buffer);
 
