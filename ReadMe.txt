@@ -6,7 +6,7 @@ Still very much WIP.
 USAGE
 -----
 
-audio_story [AUDIO_FILENAME] [OUTPUT_FILENAME]
+pesky_harmonics [AUDIO_FILENAME] [OUTPUT_FILENAME]
 
 SHOULDERS STOOD ON
 --------- ----- --
