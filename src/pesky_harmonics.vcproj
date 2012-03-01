@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="audio_story"
+	Name="pesky_harmonics"
 	ProjectGUID="{AE990B18-4C68-4E46-A813-BEDFBFFD0125}"
 	RootNamespace="audio_story"
 	TargetFrameworkVersion="196613"
