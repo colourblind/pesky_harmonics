@@ -21,8 +21,7 @@ int save_png(char *filename, unsigned char *data, int width, int height)
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr)
     {
-       png_destroy_write_struct(&png_ptr,
-         (png_infopp)NULL);
+       png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
        return 2;
     }
 
@@ -36,7 +35,7 @@ int save_png(char *filename, unsigned char *data, int width, int height)
     }
 
     png_set_IHDR(png_ptr, info_ptr, width, height,
-                 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE,
+                 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
     png_write_info(png_ptr, info_ptr);
@@ -45,7 +44,7 @@ int save_png(char *filename, unsigned char *data, int width, int height)
         return 4;
 
     for (i = 0; i < height; i ++)
-        png_write_row(png_ptr, &(data[i * width]));
+        png_write_row(png_ptr, &(data[i * width * 3]));
 
     if (setjmp(png_jmpbuf(png_ptr)))
         return 5;
@@ -70,14 +69,15 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     int width = samples / SAMPLES_STEP;
     int height = SAMPLES_PER_BLOCK_FREQ / 2 + 1;
     float *float_data = malloc(sizeof(float) * width * height);
-    unsigned char *data = malloc(sizeof(unsigned char) * width * height);
+    unsigned char *data = malloc(sizeof(unsigned char) * width * height * 3);
     FILE *infile = fopen(in_filename, "rb");
     float *in = malloc(sizeof(float) * SAMPLES_PER_BLOCK_FREQ);
     kiss_fft_cpx *out = malloc(sizeof(kiss_fft_cpx) * (SAMPLES_PER_BLOCK_FREQ / 2 + 1));
     kiss_fftr_cfg fft = kiss_fftr_alloc(SAMPLES_PER_BLOCK_FREQ, 0, 0, 0);
     float brightness_scale;
+    int err;
 
-    memset(data, 0, sizeof(unsigned char) * width * height);
+    memset(data, 0, sizeof(unsigned char) * width * height * 3);
 
     bytes_read = fread(buffer, sizeof(char), block_size, infile);
     while(bytes_read == block_size)
@@ -111,11 +111,13 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     brightness_scale = 20.f / cumulative_average;
     printf("\naver : %.3f\nscale: %.3f\n", cumulative_average, brightness_scale);
     for (i = 0; i < width * height; i ++)
-        data[i] = (unsigned char)min(255, float_data[i] * brightness_scale);
+        data[i * 3] = (unsigned char)min(255, float_data[i] * brightness_scale);
 
     fclose(infile);
 
-    save_png(out_filename, data, width, height);
+    if ((err = save_png(out_filename, data, width, height)))
+        printf("ERROR - save_png returned %d", err);
+
     free(float_data);
     free(data);
     free(buffer);
