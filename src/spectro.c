@@ -58,7 +58,7 @@ int save_png(char *filename, unsigned char *data, int width, int height)
 
 int render_freq(char *in_filename, char *out_filename, int samples)
 {
-    int i = 0, j;
+    int i = 0, j, channel;
     int wtf;
     float cumulative_average = 0;
     float block_average = 0;
@@ -68,7 +68,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     char *buffer = malloc(block_size);
     int width = samples / SAMPLES_STEP;
     int height = SAMPLES_PER_BLOCK_FREQ / 2 + 1;
-    float *float_data = malloc(sizeof(float) * width * height);
+    float *float_data[2];
     unsigned char *data = malloc(sizeof(unsigned char) * width * height * 3);
     FILE *infile = fopen(in_filename, "rb");
     float *in = malloc(sizeof(float) * SAMPLES_PER_BLOCK_FREQ);
@@ -78,26 +78,31 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     int err;
 
     memset(data, 0, sizeof(unsigned char) * width * height * 3);
+    float_data[0] = malloc(sizeof(float) * width * height);
+    float_data[1] = malloc(sizeof(float) * width * height);
 
     bytes_read = fread(buffer, sizeof(char), block_size, infile);
     while(bytes_read == block_size)
     {
-        for (j = 0; j < SAMPLES_PER_BLOCK_FREQ; j ++)
+        for (channel = 0; channel < 2; channel ++)
         {
-            // Convert 16bit int to signed float
-            wtf = buffer[j * 2 * 2] + buffer[j * 2 * 2 + 1] * 256;
-            in[j] = (float)wtf / (65536 * 0.5f);
-            // Use a Hann window to reduce noise
-            in[j] *= (1 - cosf(2 * PI * j / SAMPLES_PER_BLOCK_FREQ)) * 0.5f;
-        }
-        kiss_fftr(fft, in, out);
+            for (j = 0; j < SAMPLES_PER_BLOCK_FREQ; j ++)
+            {
+                // Convert 16bit int to signed float
+                wtf = buffer[(j * 2 + channel) * 2] + buffer[(j * 2 + channel) * 2 + 1] * 256;
+                in[j] = (float)wtf / (65536 * 0.5f);
+                // Use a Hann window to reduce noise
+                in[j] *= (1 - cosf(2 * PI * j / SAMPLES_PER_BLOCK_FREQ)) * 0.5f;
+            }
+            kiss_fftr(fft, in, out);
 
-        block_average = 0;
-        for (j = 0; j < height; j ++)
-        {
-            result = sqrtf(out[j].i * out[j].i + out[j].r * out[j].r);
-            block_average += result;
-            float_data[(height - j - 1) * width + i] = result;
+            block_average = 0;
+            for (j = 0; j < height; j ++)
+            {
+                result = sqrtf(out[j].i * out[j].i + out[j].r * out[j].r);
+                block_average += result;
+                float_data[channel][(height - j - 1) * width + i] = result;
+            }
         }
 
         block_average /= height;
@@ -108,17 +113,22 @@ int render_freq(char *in_filename, char *out_filename, int samples)
         i ++;
     }
 
-    brightness_scale = 20.f / cumulative_average;
+    brightness_scale = 16.f / cumulative_average;
     printf("\naver : %.3f\nscale: %.3f\n", cumulative_average, brightness_scale);
     for (i = 0; i < width * height; i ++)
-        data[i * 3] = (unsigned char)min(255, float_data[i] * brightness_scale);
+    {
+        data[i * 3] = (unsigned char)min(255, float_data[0][i] * brightness_scale);
+        data[i * 3 + 1] = (unsigned char)min(255, float_data[1][i] * brightness_scale);
+    }
+
 
     fclose(infile);
 
     if ((err = save_png(out_filename, data, width, height)))
         printf("ERROR - save_png returned %d", err);
 
-    free(float_data);
+    free(float_data[0]);
+    free(float_data[1]);
     free(data);
     free(buffer);
 
