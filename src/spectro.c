@@ -56,7 +56,7 @@ int save_png(char *filename, unsigned char *data, int width, int height)
     return 0;
 }
 
-int render_freq(char *in_filename, char *out_filename, int samples)
+int render_freq(char *in_filename, char *out_filename, int samples, int sampleRate)
 {
     int i = 0, j, channel;
     int wtf;
@@ -76,6 +76,7 @@ int render_freq(char *in_filename, char *out_filename, int samples)
     kiss_fftr_cfg fft = kiss_fftr_alloc(SAMPLES_PER_BLOCK_FREQ, 0, 0, 0);
     float brightness_scale;
     int err;
+	int timeTickStep = (int)(((float)sampleRate / SAMPLES_STEP) * 30);
 
     memset(data, 0, sizeof(unsigned char) * width * height * 3);
     float_data[0] = malloc(sizeof(float) * width * height);
@@ -115,14 +116,25 @@ int render_freq(char *in_filename, char *out_filename, int samples)
 
     brightness_scale = 16.f / cumulative_average;
     printf("\naver : %.3f\nscale: %.3f\n", cumulative_average, brightness_scale);
+
     for (i = 0; i < width * height; i ++)
     {
         data[i * 3] = (unsigned char)min(255, float_data[0][i] * brightness_scale);
         data[i * 3 + 1] = (unsigned char)min(255, float_data[1][i] * brightness_scale);
     }
 
-
-    fclose(infile);
+	// Add time ticks to image data
+	for (i = 0; i < width; i += timeTickStep)
+	{
+		for (j = 0; j < height; j ++)
+		{
+			data[((j * width) + i) * 3] = 128;
+			data[((j * width) + i) * 3 + 1] = 128;
+			data[((j * width) + i) * 3 + 2] = 128;
+		}
+	}
+	
+	fclose(infile);
 
     if ((err = save_png(out_filename, data, width, height)))
         printf("ERROR - save_png returned %d", err);

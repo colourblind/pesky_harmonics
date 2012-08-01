@@ -2,7 +2,7 @@
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
 
-int render_freq(char *in_filename, char *out_filename, int samples);
+int render_freq(char *in_filename, char *out_filename, int samples, int sampleRate);
 
 int samples = 0;
 int frames = 0;
@@ -38,7 +38,7 @@ int decode_packet(AVCodecContext *codecContext, AVPacket *packet, AVFrame *frame
 
 int dump_pcm(char *filename)
 {
-    int i;
+    int i, sampleRate;
     AVFormatContext *formatContext = avformat_alloc_context();
     AVCodecContext *codecContext;
     AVCodec *codec;
@@ -48,9 +48,9 @@ int dump_pcm(char *filename)
     av_register_all();
 
     if (avformat_open_input(&formatContext, filename, NULL, NULL) < 0)
-        return 1;
+        return 0;
     if (avformat_find_stream_info(formatContext, NULL) < 0)
-        return 1;
+        return 0;
 
     av_dump_format(formatContext, 0, filename, 0);
 
@@ -64,7 +64,7 @@ int dump_pcm(char *filename)
     codec = avcodec_find_decoder(codecContext->codec_id);
 
     if (avcodec_open(codecContext, codec) < 0)
-        return 1;
+        return 0;
 
     av_init_packet(&packet);
     frame = avcodec_alloc_frame();
@@ -85,28 +85,30 @@ int dump_pcm(char *filename)
 
     fclose(outfile);
 
+	sampleRate = codecContext->sample_rate;
+
     printf("Total frames : %d\n", frames);
     printf("Total samples: %d\n", samples);
 
     avcodec_close(codecContext);
     avformat_close_input(&formatContext);
 
-    return 0;
+    return sampleRate;
 }
 
 int main(int argc, char **argv)
 {
-    int decode_result;
+    int sampleRate;
     int render_result;
 
-    if (argc < 2)
+    if (argc < 3)
         return 1;
 
-    decode_result = dump_pcm(argv[1]);
-    if (decode_result != 0)
-        return decode_result;
+    sampleRate = dump_pcm(argv[1]);
+    if (sampleRate == 0)
+        return 2;
 
-    render_result = render_freq("test.pcm", argv[2], samples);
+    render_result = render_freq("test.pcm", argv[2], samples, sampleRate);
     if (render_result != 0)
         return render_result;
 
